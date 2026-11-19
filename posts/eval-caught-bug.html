@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>评测体系第一次抓到真 bug · ChiJiaYong</title>
+<style>
+  :root { --bg:#0f1420; --panel:#171e2e; --line:#2a3550; --ink:#e8ecf6; --dim:#93a0bd; --acc:#5b8cff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); font:15px/1.85 "Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:48px 20px 80px; }
+  a { color:var(--acc); text-decoration:none; }
+  h1 { font-size:26px; margin-bottom:8px; } .meta { color:var(--dim); font-size:13px; margin-bottom:28px; }
+  h2 { font-size:19px; margin:30px 0 10px; }
+  p { margin:12px 0; }
+  pre { background:#131a2b; border:1px solid var(--line); border-radius:10px; padding:14px; overflow-x:auto; font-size:13px; line-height:1.6; }
+  code { font-family:Consolas,monospace; }
+  .callout { background:var(--panel); border-left:3px solid var(--acc); padding:12px 16px; border-radius:0 10px 10px 0; margin:16px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p><a href="../index.html">← 返回主页</a></p>
+<h1>评测体系第一次抓到真 bug：工具调用被执行了两次</h1>
+<div class="meta">2026-11-20 · AgentDesk 开发日志 · 标签：评测 / LangGraph / 幂等性</div>
+
+<h2>现象</h2>
+<p>图级评测任务 <code>two_tool_sequence</code>（用户同时问订单状态和价格，期望工具序列
+<code>[get_order_status, get_order_amount]</code>）失败。轨迹断言给出的信息很精确：
+实际序列是每个工具各出现<b>两次</b>——<code>['get_order_status', 'get_order_status',
+'get_order_amount', 'get_order_amount']</code>。</p>
+
+<h2>定位</h2>
+<p>排除模型层（脚本是固定的两轮工具调用）后，问题锁定在 <code>validate</code> 护栏节点。
+它的工作是过滤掉参数来源不合法的工具调用，然后重建一条"只含合法调用"的 AIMessage。
+问题出在重建：新消息没有复用原消息的 <code>id</code>。</p>
+<p>LangGraph 的 <code>add_messages</code> reducer 语义是：<b>同 id 替换，不同 id 追加</b>。
+于是状态里同时存在"原 plan 消息（带全部工具调用）"和"重建后的合法子集消息"，
+下游 <code>execute</code> 节点把两条消息的 tool_calls 都执行了——每个工具跑两遍。</p>
+
+<h2>为什么没造成事故</h2>
+<p>第二次执行的 <code>create_ticket</code> 带同样的幂等键，工具层返回
+<code>"replayed": true</code>（原工单），没有产生重复副作用。<b>幂等键把一个本可能
+重复创建两张工单的事故，降级成了一次无害的重复读。</b>这正是当初给写操作强制幂等的原因。</p>
+
+<h2>修复</h2>
+<pre><code># 重建时复用原消息 id —— add_messages 原位替换，而非追加
+out.append(AIMessage(content=last.content or "", tool_calls=allowed, id=last.id))
+# 且无拒绝发生时返回空更新：原消息本就携带全部合法调用
+if not rejected:
+    return {}</code></pre>
+
+<div class="callout">
+三个层面各留了一道防线：<b>回归任务</b>（two_tool_sequence 断言精确的工具调用序列）、
+<b>幂等键</b>（同类错误再次发生时副作用仍被吸收）、<b>文档</b>（节点注释写明 add_messages
+的替换语义，防止下一个人再踩）。
+</div>
+
+<h2>这件事改变了我对评测的看法</h2>
+<p>如果断言只检查"最终回复对不对"，这个 bug 完全不可见——两次执行后回复一样正常。
+只有把断言放到<b>轨迹</b>上（谁被调用、被调用几次、参数从哪来），工具层的重复执行才会红。
+这也顺带回答了一个常被问的问题："评测体系到底值几个钱？"——它值一次真实的线上事故。</p>
+
+<p><a href="../index.html">← 返回主页</a></p>
+</div>
+</body>
+</html>

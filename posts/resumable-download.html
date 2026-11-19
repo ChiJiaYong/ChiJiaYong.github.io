@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>当网络持续掐断大文件传输 · ChiJiaYong</title>
+<style>
+  :root { --bg:#0f1420; --panel:#171e2e; --line:#2a3550; --ink:#e8ecf6; --dim:#93a0bd; --acc:#5b8cff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); font:15px/1.85 "Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:48px 20px 80px; }
+  a { color:var(--acc); text-decoration:none; }
+  h1 { font-size:26px; margin-bottom:8px; } .meta { color:var(--dim); font-size:13px; margin-bottom:28px; }
+  h2 { font-size:19px; margin:30px 0 10px; }
+  p { margin:12px 0; }
+  pre { background:#131a2b; border:1px solid var(--line); border-radius:10px; padding:14px; overflow-x:auto; font-size:13px; line-height:1.6; }
+  code { font-family:Consolas,monospace; }
+  .callout { background:var(--panel); border-left:3px solid var(--acc); padding:12px 16px; border-radius:0 10px 10px 0; margin:16px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p><a href="../index.html">← 返回主页</a></p>
+<h1>当网络持续掐断大文件传输：断点续传 + 完整性校验的落地</h1>
+<div class="meta">2026-11-19 · AgentDesk 开发日志 · 标签：数据管道 / 可靠性</div>
+
+<h2>背景</h2>
+<p>AgentDesk 的知识库与业务库依赖三个真实数据源：Olist 电商数据集（42.6MB）、
+Amazon QA 问答集（34.5MB）、政府官网的法规原文。开发环境的网络对大文件传输极不友好：
+实测反复出现 <code>Connection was reset</code>，一次 34MB 的下载在 8.7MB 处被掐断。</p>
+
+<h2>第一个错误：存在即跳过</h2>
+<p>最初的下载脚本用"文件存在就跳过"做幂等。重跑时残缺文件被当成"已完成"直接放行，
+<code>manifest.json</code> 里也少了一条记录。这个 bug 直到构建知识库解析 gzip 失败才暴露。</p>
+<div class="callout">
+教训：幂等的判断条件不是"存在"，是<b>"完整且校验通过"</b>。对 gzip 文件，完整性校验
+就是把整个流读完（读到最后一个成员），成本远低于事后排查。
+</div>
+
+<h2>第二个正确决定：Range 续传</h2>
+<p>与其祈祷网络窗口，不如假设"每次传输都可能中断"。下载函数改为：</p>
+<pre><code>headers = {"Range": f"bytes={offset}-"} if offset else {}
+# 206 → 从 offset 追加；200 → 服务端不支持 Range，从头重来
+# 每次失败保留已收到的字节，重试直到 content-length 收齐</code></pre>
+<p>实测效果：34.5MB 的 Amazon QA 分 4 段续完（8.7 → 15.7 → 24.6 → 31.9 → 完成），
+每次重置零浪费。顺带把 gzip 完整性校验加进主流程，manifest 记录
+sha256 + 许可证 + 抓取日期。</p>
+
+<h2>延伸：数据工件的"可追溯"承诺</h2>
+<p>这个脚本现在是 AgentDesk 数据管道的一部分，配套三条规则：</p>
+<ul>
+<li>数据永不进 git（许可合规 + 仓库轻量），用下载脚本 + checksum 固定版本</li>
+<li>每个数据集在 <code>data/manifest.json</code> 里留 URL/许可证/日期/sha256</li>
+<li>评测永远在临时副本上跑，绝不改写共享数据工件（这条也是被 bug 教出来的）</li>
+</ul>
+<p>面试里被问"你的数据是真的吗"，答案不是一句"真实数据集"，而是这一整套可核验的链路。</p>
+
+<p><a href="../index.html">← 返回主页</a></p>
+</div>
+</body>
+</html>

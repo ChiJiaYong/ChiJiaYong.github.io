@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>为什么这个规模我不用 Chroma · ChiJiaYong</title>
+<style>
+  :root { --bg:#0f1420; --panel:#171e2e; --line:#2a3550; --ink:#e8ecf6; --dim:#93a0bd; --acc:#5b8cff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); font:15px/1.85 "Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:48px 20px 80px; }
+  a { color:var(--acc); text-decoration:none; }
+  h1 { font-size:26px; margin-bottom:8px; } .meta { color:var(--dim); font-size:13px; margin-bottom:28px; }
+  h2 { font-size:19px; margin:30px 0 10px; }
+  p { margin:12px 0; }
+  pre { background:#131a2b; border:1px solid var(--line); border-radius:10px; padding:14px; overflow-x:auto; font-size:13px; line-height:1.6; }
+  code { font-family:Consolas,monospace; }
+  .callout { background:var(--panel); border-left:3px solid var(--acc); padding:12px 16px; border-radius:0 10px 10px 0; margin:16px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p><a href="../index.html">← 返回主页</a></p>
+<h1>为什么这个规模我不用 Chroma：一份可以被挑战的存储选型 ADR</h1>
+<div class="meta">2026-11-19 · AgentDesk 设计决策（ADR-0004）· 标签：RAG / 架构决策</div>
+
+<h2> tempting 的默认答案</h2>
+<p>做 RAG 项目，"上个向量数据库"几乎是默认动作，简历上也好看。但我把 Chroma 放进了
+"延后"栏，理由写在 ADR-0004 里，欢迎挑战。</p>
+
+<h2>约束</h2>
+<ul>
+<li>知识库 ~3 千段（真实语料子集），单进程全量内存计算绰绰有余</li>
+<li>语料需要分钟级重建——评测要求"改了切块策略就重跑"，迁移成本必须接近零</li>
+<li>纯 CPU 开发机，Chroma 附带的 onnxruntime 等重依赖纯属负担</li>
+</ul>
+
+<h2>决策与代价</h2>
+<p>先落地本地实现：rank-bm25 + numpy 矩阵 + pickle/jsonl 落盘，检索器对外只暴露
+<code>add / retrieve / save / load</code>。代价是简历少一个向量库关键词——补偿方式是
+把这份缺失转化为数据：</p>
+<pre><code># 消融评测（27 金标，零 LLM 成本）
+bm25    hit@5 = 0.852
+dense   hit@5 = 0.852
+hybrid  hit@5 = 0.926   # RRF 融合，+7.4pp</code></pre>
+<p>"两路各自召回不同形态的失败、融合互补"——这个机理结论比库名值钱。</p>
+
+<h2>复活条件（写在 ADR 里，防止变成教条）</h2>
+<p>知识库 &gt; 5 万段、或多服务共享索引、或需要元数据过滤查询时，引入 Chroma 适配器——
+因为 BM25/向量矩阵已抽象为内部件，迁移只动 <code>add/save/load</code> 三个方法，
+并附一份同口径对比评测证明"本地实现与 Chroma 结果一致"后再切换。</p>
+
+<div class="callout">
+选型题的正确姿势不是"选了什么"，而是<b>约束是什么、代价是什么、什么时候换</b>。
+这也是我把 ADR 写进项目工程规范的原因：每个决策可追溯、可挑战、可复活。
+</div>
+
+<p><a href="../index.html">← 返回主页</a></p>
+</div>
+</body>
+</html>
