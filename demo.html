@@ -222,7 +222,7 @@ const SAMPLES = [
   `How much did I pay for order {ID}?`,
   `What is your return policy? How many days do I have?`,
   `The item from order {ID} arrived damaged, I want a refund.`,
-  `Check order cccccccccccccccccccccccccccccccc for me`
+  `Check the status of order cccccccccccccccccccccccccccccccc for me`
 ];
 function fill(i) {
   document.getElementById("msg").value = SAMPLES[i].replace("{ID}", ORDERS[0].order_id);
