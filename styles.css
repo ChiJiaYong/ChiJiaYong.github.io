@@ -1,0 +1,144 @@
+/* AgentDesk portfolio — design system
+   tokens → base → components → motion. Zero build step. */
+
+/* ---------- fonts (self-hosted, latin; 中文走系统栈) ---------- */
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("fonts/SpaceGrotesk-500.woff2") format("woff2");
+  font-weight: 500; font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("fonts/SpaceGrotesk-700.woff2") format("woff2");
+  font-weight: 700; font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-400.woff2") format("woff2");
+  font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-600.woff2") format("woff2");
+  font-weight: 600; font-display: swap;
+}
+
+/* ---------- tokens ---------- */
+:root {
+  --bg: #0b0f19;
+  --panel: #111726;
+  --panel-2: #151c2c;
+  --line: #202b42;
+  --line-soft: #1a2338;
+  --ink: #e9edf5;
+  --dim: #8b96ad;
+  --accent: #6c9bff;
+  --accent-dim: #3d5aa8;
+  --ok: #4fc489;
+  --warn: #e8a75c;
+  --bad: #e5646c;
+  --sans: "Space Grotesk", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --radius: 10px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---------- base ---------- */
+* { box-sizing: border-box; margin: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.75 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+/* 细网格纹理：固定层，不随滚动重绘 */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 75%);
+}
+.wrap, body > .wrap > * { position: relative; z-index: 1; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+code { font-family: var(--mono); font-size: 0.86em; background: var(--panel-2);
+       padding: 1px 6px; border-radius: 5px; }
+::selection { background: var(--accent-dim); color: #fff; }
+
+/* ---------- layout ---------- */
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 22px; }
+.top { max-width: 1240px; margin: 0 auto; padding: 18px 22px 0;
+       display: flex; justify-content: space-between; align-items: center; }
+section, .section { padding: 40px 0; }
+
+/* ---------- type ---------- */
+h1, h2, h3 { font-family: var(--sans); letter-spacing: -0.015em; }
+.display { font-family: var(--sans); font-weight: 700; letter-spacing: -0.03em; }
+.mono { font-family: var(--mono); }
+.num { font-family: var(--mono); font-weight: 600; letter-spacing: -0.02em; }
+
+/* ---------- components ---------- */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--accent); color: #fff; border: 1px solid transparent;
+  border-radius: 8px; padding: 9px 18px; cursor: pointer; font: inherit;
+  transition: transform 0.12s var(--ease), background 0.15s;
+}
+.btn:hover { background: #5a8bf0; }
+.btn:active { transform: translateY(1px) scale(0.98); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.ghost:hover { border-color: var(--accent-dim); }
+.chip {
+  display: inline-block; font-family: var(--mono); font-size: 11px;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--dim);
+  padding: 2px 9px; border-radius: 6px;
+}
+.badge { display: inline-block; font-family: var(--mono); font-size: 11px;
+         background: rgba(108, 155, 255, 0.12); color: var(--accent);
+         border: 1px solid rgba(108, 155, 255, 0.3); padding: 1px 9px; border-radius: 6px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+
+/* ---------- motion ---------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slidein {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 0.7s var(--ease) both; animation-delay: calc(var(--i, 0) * 90ms); }
+.fade { animation: fadein 0.5s var(--ease) both; }
+.slide { animation: slidein 0.35s var(--ease) both; }
+
+[data-reveal] { opacity: 0; transform: translateY(18px);
+                transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+                transition-delay: calc(var(--i, 0) * 80ms); }
+[data-reveal].on { opacity: 1; transform: none; }
+
+/* 交互微反馈 */
+.btn:active, button:active { transform: translateY(1px) scale(0.98); }
+.card-hover { transition: border-color 0.18s var(--ease), transform 0.18s var(--ease); }
+.card-hover:hover { border-color: var(--accent-dim); transform: translateY(-2px); }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- reduced motion（非协商项） ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  [data-reveal] { opacity: 1; transform: none; }
+}
