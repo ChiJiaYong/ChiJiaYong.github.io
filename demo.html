@@ -116,6 +116,7 @@ async function boot() {
                           setTimeout(() => s.textContent = o.order_id, 1200); };
       idx.appendChild(s);
     });
+    buildIdx();
     document.getElementById("stat").textContent =
       `✓ 数据就绪：${ORDERS.length} 笔真实订单 · ${POLICY.length} 条法规 chunks（本地）`;
   } catch (e) { document.getElementById("stat").textContent = "数据加载失败（需通过 http:// 访问）"; }
