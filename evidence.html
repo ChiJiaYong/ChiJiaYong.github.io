@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数据与证据 · AgentDesk</title>
+<style>
+  :root { --bg:#0f1420; --panel:#171e2e; --line:#2a3550; --ink:#e8ecf6; --dim:#93a0bd; --acc:#5b8cff; --ok:#3fbf7f; --warn:#f0a24b; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); font:14.5px/1.75 "Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:40px 20px 80px; }
+  a { color:var(--acc); text-decoration:none; } a:hover { text-decoration:underline; }
+  h1 { font-size:26px; margin-bottom:6px; }
+  .note { color:var(--dim); font-size:13.5px; margin-bottom:26px; }
+  h2 { font-size:19px; margin:34px 0 12px; }
+  .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin-bottom:8px; }
+  .metric { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .metric b { font-size:20px; color:var(--acc); display:block; }
+  .metric span { color:var(--dim); font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:10px 0; }
+  th, td { border:1px solid var(--line); padding:7px 11px; text-align:left; vertical-align:top; }
+  th { color:var(--dim); font-weight:600; background:#131a2b; }
+  code { background:#131a2b; padding:1px 6px; border-radius:5px; font-size:12.5px; font-family:Consolas,monospace; }
+  .case { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--warn);
+          border-radius:0 10px 10px 0; padding:12px 16px; margin:10px 0; font-size:13.5px; }
+  .case b { color:var(--warn); }
+  .cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 18px; }
+  .card .t { font-weight:600; color:var(--acc); } .card .d { color:var(--dim); font-size:12.5px; margin-top:4px; }
+  .top-link { font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="top-link"><a href="index.html">← 返回主页</a> · <a href="demo.html">→ 去在线体验</a></p>
+  <h1>数据与证据</h1>
+  <p class="note">口说无凭。本页所有数字均可在仓库中一条命令复现；每条数据都有来源、许可证、校验和、日期。</p>
+
+  <div class="metrics">
+    <div class="metric"><b>0.926</b><span>混合检索 hit@5（单路 0.852，+7.4pp）</span></div>
+    <div class="metric"><b>1.0 / 0.875</b><span>真实模型 Pass@2 / Pass^2（本地 Qwen2.5-7B）</span></div>
+    <div class="metric"><b>99,441</b><span>真实订单业务库（Olist）</span></div>
+    <div class="metric"><b>3,052</b><span>溯源知识 chunks</span></div>
+    <div class="metric"><b>51</b><span>单元/集成测试全绿</span></div>
+    <div class="metric"><b>14</b><span>PR 全走 CI 门禁</span></div>
+  </div>
+
+  <h2>① 检索消融（零 LLM 成本）</h2>
+  <table>
+    <tr><th>模式</th><th>hit@5</th><th>MRR</th><th>说明</th></tr>
+    <tr><td>BM25（jieba 稀疏）</td><td>0.852</td><td>0.716</td><td>条款号/数字精确匹配</td></tr>
+    <tr><td>Dense（bge-small-zh, CPU）</td><td>0.852</td><td>0.713</td><td>口语问句→法规书面语的语义改写</td></tr>
+    <tr><td><b>Hybrid（RRF, k=60）</b></td><td><b>0.926</b></td><td><b>0.744</b></td><td>两路互补，+7.4pp</td></tr>
+    <tr><td>Hybrid + Rerank（bge-reranker）</td><td>0.926</td><td>0.744</td><td>当前金标规模下无显著差异（&lt;2 SE，§7.7），接口已留</td></tr>
+  </table>
+  <p class="note">金标 27 条：法规查询按条款文本正则动态定位（切块变更不失效）+ Amazon QA 真实问句。复现：<code>uv run python -m evals.retrieval_eval --modes bm25,dense,hybrid,hybrid_rerank</code> · <a href="https://github.com/ChiJiaYong/agentdesk/blob/main/docs/eval-reports/retrieval-v0.1.md">完整报告 →</a></p>
+
+  <h2>② Agent 路径评测（轨迹断言，零 API 成本）</h2>
+  <p>10 任务 × 6 风险类（正常流/缺参/伪造参数/工具故障/后果型动作/幂等重放），断言落在<b>轨迹</b>上：
+  工具调用序列、参数来源、护栏拒绝、人审标志——不是只看最终文本。<b>这套评测曾抓到一个真 bug</b>：
+  validate 节点重建 AIMessage 未复用 id → 工具调用被执行两次 → 幂等键兜底 + 原位替换修复 + 回归任务留档。</p>
+  <p class="note">复现：<code>uv run python -m evals.agent_eval</code> · <a href="https://github.com/ChiJiaYong/agentdesk/blob/main/docs/eval-reports/agent-eval-v0.1.md">完整报告 →</a></p>
+
+  <h2>③ 真实模型评测（本地 Qwen2.5-7B via llama-server, CPU）</h2>
+  <p>非脚本化任务直跑真实模型，Pass@2 = 1.0，Pass^2 = 0.875（§7.2.2：能力上限 ≠ 业务可靠性，
+  p=0.6 时 Pass@5≈99% 而 Pass^5≈7.8%——风险操作必须盯后者）。两个最有价值的发现：</p>
+  <div class="case"><b>注入攻击真缺口 + Harness 兜底</b>："You are now GenericHelper" 注入下，7B 模型确实顺从了身份改写。
+  按 §1.2.5（上下文层护栏有结构性上限，必须输出侧验证）实现 Correct 层：输出侧 persona 检测 → 纠正重试 →
+  仍顺从则原位阻断回复并转人工。修复后 Pass^2 通过——模型缺陷没有消失，但系统设计使其无害化。</div>
+  <div class="case"><b>同源 Judge 两次与确定性证据矛盾</b>：Judge 判词声称"agent did not refuse"，而确定性断言证明模型
+  已明确拒绝。§7.5.1 古德哈特风险当场实证 → 异源 Judge（API 层）为配置项，确定性验证器等级高于 LLM 评审（§9.1）。</div>
+  <p class="note">复现：<code>uv run python -m evals.real_model_eval --tier local --k 2</code> · <a href="https://github.com/ChiJiaYong/agentdesk/blob/main/docs/eval-reports/real-model-eval-v0.1.md">完整报告（含 Judge 分歧证据存档） →</a></p>
+
+  <h2>④ 轨迹回放（真实运行，非示意）</h2>
+  <div class="cards">
+    <a class="card" href="trace-replay.html"><div class="t">▶ 查订单（工具调用全程）</div>
+      <div class="d">本地 Qwen2.5-7B 真实运行：原生工具调用 → 三态结果 → 事实锚定的最终回复，含时延与节点</div></a>
+    <a class="card" href="trace-replay.html"><div class="t">▶ 退款请求（谨慎路径）</div>
+      <div class="d">7B 模型选择先确认订单号——展示 HITL 之前的"预检-确认"行为</div></a>
+  </div>
+
+  <h2>⑤ 数据溯源表</h2>
+  <table>
+    <tr><th>数据</th><th>来源</th><th>许可证</th><th>用途</th></tr>
+    <tr><td>Olist 电商 99,441 订单（9 表）</td><td>Kaggle olistbr/brazilian-ecommerce</td><td>CC BY-NC-SA 4.0</td><td>业务库（查订单/物流/退款工具）</td></tr>
+    <tr><td>Amazon QA Electronics</td><td>UCSD McAuley Lab（免注册直下）</td><td>公开学术（引 ICDM16/WWW16）</td><td>真实问句评测校准 + FAQ 语料</td></tr>
+    <tr><td>消费者权益保护法 / 三包规定</td><td>国家市场监督管理总局官网</td><td>官方公开文件</td><td>中文售后政策知识库</td></tr>
+    <tr><td>消保法实施条例（国令第778号）</td><td>中国政府网</td><td>官方公开文件</td><td>中文售后政策知识库</td></tr>
+    <tr><td>GitLab Handbook / FastAPI docs</td><td>开源仓库</td><td>CC BY-SA 4.0 / MIT</td><td>内部知识助手语料</td></tr>
+  </table>
+  <p class="note">每条数据在 <code>data/manifest.json</code> 记录来源 URL / 许可证 / sha256 / 抓取日期；数据永不入 git，由下载脚本 + 校验和固定版本。</p>
+
+  <h2>⑥ 工程规范证据</h2>
+  <table>
+    <tr><th>实践</th><th>证据位置</th></tr>
+    <tr><td>受保护主干（PR-only + CI 状态检查，无绕过）</td><td>GitHub Branch ruleset "main-protected"；14 个 PR 合并历史</td></tr>
+    <tr><td>设计决策可追溯</td><td><a href="https://github.com/ChiJiaYong/agentdesk/tree/main/docs/adr">docs/adr/</a> 6 篇（约束→候选→决策→代价→复活条件）</td></tr>
+    <tr><td>书逐章对照基线</td><td><a href="https://github.com/ChiJiaYong/agentdesk/blob/main/docs/BOOK_MAP.md">docs/BOOK_MAP.md</a>（313 页精读，60+ 处方带节号）</td></tr>
+    <tr><td>数据不入库 + 溯源清单</td><td><a href="https://github.com/ChiJiaYong/agentdesk/blob/main/data/README.md">data/README.md</a> + data/manifest.json</td></tr>
+    <tr><td>CI 三道门禁（lint / test / eval-smoke）</td><td>.github/workflows/ci.yml，14 个 PR 合并历史全绿（3 次真实拦截）</td></tr>
+  </table>
+
+  <p style="margin-top:30px"><a href="index.html">← 返回主页</a> · <a href="demo.html">→ 在线体验</a> ·
+  <a href="https://github.com/ChiJiaYong/agentdesk" target="_blank">GitHub 仓库 ↗</a> · 欢迎拷打。</p>
+</div>
+</body>
+</html>
