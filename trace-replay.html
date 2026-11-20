@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>真实运行轨迹回放 · AgentDesk</title>
+<style>
+  :root { --bg:#0f1420; --panel:#171e2e; --line:#2a3550; --ink:#e8ecf6; --dim:#93a0bd; --acc:#5b8cff; --ok:#3fbf7f; --warn:#f0a24b; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); font:14px/1.7 "Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:860px; margin:0 auto; padding:40px 20px 80px; }
+  a { color:var(--acc); text-decoration:none; }
+  h1 { font-size:24px; margin-bottom:6px; }
+  .note { color:var(--dim); font-size:13.5px; margin-bottom:20px; }
+  .selector { margin:16px 0; display:flex; gap:10px; flex-wrap:wrap; }
+  .selector button { background:var(--panel); color:var(--ink); border:1px solid var(--line);
+                     padding:8px 16px; border-radius:8px; cursor:pointer; font:inherit; }
+  .selector button.active { border-color:var(--acc); color:var(--acc); }
+  .step { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+          padding:12px 16px; margin:10px 0; }
+  .step .head { display:flex; justify-content:space-between; color:var(--dim); font-size:12px; }
+  .step .head .node { color:var(--acc); font-weight:600; }
+  .step pre { white-space:pre-wrap; word-break:break-all; font-size:12.5px; margin-top:6px;
+              font-family:Consolas,monospace; color:#c7d2ea; }
+  .step.user { border-left:3px solid var(--ok); }
+  .step.tool { border-left:3px solid var(--warn); }
+  .step.ai { border-left:3px solid var(--acc); }
+  .final { background:#12241c; border:1px solid var(--ok); }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>真实运行轨迹回放</h1>
+  <p class="note">以下不是示意动画——是 2026-11-20 本地 Qwen2.5-7B（llama-server, CPU）真实运行时
+  落盘的 run 轨迹（<code>runs/YYYY-MM-DD/{run_id}.json</code>），每个节点一次模型/工具/护栏调用，
+  含时延与消息内容。数据：99,441 笔真实订单（Olist）+ 官方法规原文知识库。</p>
+  <div class="selector">
+    <button id="btn-status" class="active" onclick="load('status')">① 查订单（工具调用）</button>
+    <button id="btn-refund" onclick="load('refund')">② 退款请求（谨慎路径）</button>
+  </div>
+  <div id="steps"></div>
+  <p class="note" style="margin-top:18px">想跑活的？<a href="https://github.com/ChiJiaYong/agentdesk#quick-start">本地一键复现 →</a>
+  （<code>docker compose up</code> 或 <code>uv run uvicorn service.main:app</code>）</p>
+</div>
+<script>
+const RUNS = {
+  status: { file: "traces/run-status.json", label: "① 查订单（工具调用）" },
+  refund: { file: "traces/run-refund.json", label: "② 退款请求（谨慎路径）" },
+};
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+async function load(key) {
+  document.querySelectorAll(".selector button").forEach(b => b.classList.remove("active"));
+  document.getElementById("btn-" + key).classList.add("active");
+  const trace = await (await fetch(RUNS[key].file)).json();
+  const box = document.getElementById("steps");
+  box.innerHTML = `<div class="step"><div class="head"><span>run_id</span><span>${esc(trace.run_id)} · 总耗时 ${esc(String(trace.total_ms))}ms</span></div></div>`;
+  let i = 0;
+  for (const step of trace.steps) {
+    for (const m of (step.messages || [])) {
+      i++;
+      const cls = m.type === "human" ? "user" : (m.type === "tool" ? "tool" : "ai");
+      const d = document.createElement("div");
+      d.className = "step " + cls;
+      let extra = "";
+      if (m.tool_calls && m.tool_calls.length)
+        extra = `<pre>tool_calls: ${esc(JSON.stringify(m.tool_calls, null, 1))}</pre>`;
+      const label = m.type === "human" ? "客户消息" : (m.type === "tool" ? "工具返回" : "模型回复");
+      d.innerHTML = `<div class="head"><span class="node">#${i} ${label} · 节点 ${esc(step.node)}</span>
+                     <span>+${esc(String(step.latency_ms))}ms</span></div><pre>${esc(String(m.content).slice(0, 900))}</pre>${extra}`;
+      box.appendChild(d);
+    }
+  }
+  if (trace.final) {
+    const d = document.createElement("div");
+    d.className = "step final";
+    d.innerHTML = `<div class="head"><span class="node">最终状态</span>
+                   <span>needs_human=${esc(String(trace.final.needs_human))}</span></div>
+                   <pre>${esc(String(trace.final.messages?.at(-1)?.content || "").slice(0, 900))}</pre>`;
+    box.appendChild(d);
+  }
+}
+load("status");
+</script>
+</body>
+</html>

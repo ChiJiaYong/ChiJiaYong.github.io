@@ -1,0 +1,53 @@
+{
+  "run_id": "run_20261120_ed695b106f",
+  "session_id": "demo-capture",
+  "recorded_at": "2026-11-20T11:33:56.129608+00:00",
+  "total_ms": 13848.1,
+  "error": null,
+  "steps": [
+    {
+      "node": "load_user_ids",
+      "latency_ms": 2.7,
+      "messages": [],
+      "user_order_ids": [
+        "e481f51cbdc54678b7cc49136f2d6af7"
+      ]
+    },
+    {
+      "node": "plan",
+      "latency_ms": 13847.6,
+      "messages": [
+        {
+          "type": "ai",
+          "content": "Thank you for letting us know about the damaged item. Could you please provide me with the order ID so I can check the details? You've already given me one, but sometimes there can be a typo or it might not be recognized. Just to confirm, the order ID is e481f51cbdc54678b7cc49136f2d6af7.",
+          "tokens": {
+            "input_tokens": 1464,
+            "output_tokens": 86,
+            "total_tokens": 1550
+          }
+        }
+      ]
+    },
+    {
+      "node": "review_gate",
+      "latency_ms": 13848.0,
+      "messages": [],
+      "needs_human": false
+    }
+  ],
+  "final": {
+    "needs_human": false,
+    "risk_flags": [],
+    "messages": [
+      {
+        "type": "ai",
+        "content": "Thank you for letting us know about the damaged item. Could you please provide me with the order ID so I can check the details? You've already given me one, but sometimes there can be a typo or it might not be recognized. Just to confirm, the order ID is e481f51cbdc54678b7cc49136f2d6af7.",
+        "tokens": {
+          "input_tokens": 1464,
+          "output_tokens": 86,
+          "total_tokens": 1550
+        }
+      }
+    ]
+  }
+}

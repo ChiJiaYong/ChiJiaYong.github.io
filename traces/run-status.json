@@ -1,0 +1,93 @@
+{
+  "run_id": "run_20261120_d67f17470a",
+  "session_id": "demo-capture",
+  "recorded_at": "2026-11-20T11:33:31.812534+00:00",
+  "total_ms": 58438.3,
+  "error": null,
+  "steps": [
+    {
+      "node": "load_user_ids",
+      "latency_ms": 13.1,
+      "messages": [],
+      "user_order_ids": [
+        "e481f51cbdc54678b7cc49136f2d6af7"
+      ]
+    },
+    {
+      "node": "plan",
+      "latency_ms": 38694.4,
+      "messages": [
+        {
+          "type": "ai",
+          "content": "",
+          "tool_calls": [
+            {
+              "name": "get_order_status",
+              "args": {
+                "order_id": "e481f51cbdc54678b7cc49136f2d6af7"
+              }
+            }
+          ],
+          "tokens": {
+            "input_tokens": 1457,
+            "output_tokens": 49,
+            "total_tokens": 1506
+          }
+        }
+      ]
+    },
+    {
+      "node": "validate",
+      "latency_ms": 38695.0,
+      "messages": []
+    },
+    {
+      "node": "execute",
+      "latency_ms": 38696.2,
+      "messages": [
+        {
+          "type": "tool",
+          "content": "{\"status\": \"ok\", \"tool\": \"get_order_status\", \"data\": {\"order_id\": \"e481f51cbdc54678b7cc49136f2d6af7\", \"status\": \"delivered\", \"purchased_at\": \"2017-10-02 10:56:33\", \"delivered_at\": \"2017-10-10 21:25:13\", \"estimated_delivery\": \"2017-10-18 00:00:00\"}, \"error_code\": null, \"message\": \"\"}",
+          "tool_call_id": "BOfOCmxtmLNIcLoLwyp17xtEYgsrVWrb"
+        }
+      ],
+      "risk_flags": []
+    },
+    {
+      "node": "plan",
+      "latency_ms": 58437.8,
+      "messages": [
+        {
+          "type": "ai",
+          "content": "Your order with the ID e481f51cbdc54678b7cc49136f2d6af7 has been delivered. It was purchased on October 2, 2017, and delivered on October 10, 2017. If you have not received it, please check your address and delivery information for any errors. If the issue persists, feel free to reach out.",
+          "tokens": {
+            "input_tokens": 1668,
+            "output_tokens": 95,
+            "total_tokens": 1763
+          }
+        }
+      ]
+    },
+    {
+      "node": "review_gate",
+      "latency_ms": 58438.2,
+      "messages": [],
+      "needs_human": false
+    }
+  ],
+  "final": {
+    "needs_human": false,
+    "risk_flags": [],
+    "messages": [
+      {
+        "type": "ai",
+        "content": "Your order with the ID e481f51cbdc54678b7cc49136f2d6af7 has been delivered. It was purchased on October 2, 2017, and delivered on October 10, 2017. If you have not received it, please check your address and delivery information for any errors. If the issue persists, feel free to reach out.",
+        "tokens": {
+          "input_tokens": 1668,
+          "output_tokens": 95,
+          "total_tokens": 1763
+        }
+      }
+    ]
+  }
+}
