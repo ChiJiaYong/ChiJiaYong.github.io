@@ -130,7 +130,7 @@ boot();
 const IDX = {};
 function buildIdx() { ORDERS.forEach(o => IDX[o.order_id] = o); }
 
-function get_order_status(order_id) {
+function get_order_status({ order_id }) {
   const o = IDX[order_id];
   if (!o) return { status: "error", tool: "get_order_status", error_code: "NOT_FOUND",
                    message: `order ${order_id} not found` };
@@ -138,14 +138,24 @@ function get_order_status(order_id) {
     order_id: o.order_id, order_status: o.order_status, purchased: o.purchased,
     eta: o.eta, total: o.total } };
 }
-function get_order_amount(order_id) {
+function get_order_amount({ order_id }) {
   const o = IDX[order_id];
   if (!o || !o.total) return { status: "error", tool: "get_order_amount",
     error_code: "NOT_FOUND", message: "no payment records" };
   return { status: "ok", tool: "get_order_amount", data: { order_id, total: o.total,
     payment_types: o.pay_types ? o.pay_types.split(",") : [] } };
 }
-function search_knowledge(query) {
+// 工具分派表（映射而非三元链——三元链会因 truthy 短路跳过后续工具，实测抓到过）
+const TOOL_IMPLS = {
+  get_order_status, get_order_amount, search_knowledge,
+  create_ticket: createTicket
+};
+function dispatch(tool, args) {
+  const fn = TOOL_IMPLS[tool];
+  if (!fn) return { status: "error", tool, error_code: "UNKNOWN_TOOL" };
+  return fn(args);
+}
+function search_knowledge({ query }) {
   const toks = query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
   const scored = POLICY.map(c => {
     const text = (c.text + " " + c.doc_id).toLowerCase();
@@ -174,7 +184,7 @@ const INJECT_RX = /ignore (all )?previous instructions|you are now (\w+)|i am (n
 // ---------------- HITL queue (idempotent, localStorage) ----------------
 function getQueue() { return JSON.parse(localStorage.getItem("ad_queue") || "[]"); }
 function setQueue(q) { localStorage.setItem("ad_queue", JSON.stringify(q)); renderQueue(); }
-function createTicket(order_id, issue, key) {
+function createTicket({ order_id, issue, key }) {
   const q = getQueue();
   const exist = q.find(t => t.key === key);
   if (exist) return { status: "ok", tool: "create_ticket", data: { ticket_id: exist.id,
@@ -279,9 +289,7 @@ async function send() {
       chatMsg("ai", "该操作已多次重复，为安全起见已转交人工客服处理。");
       return;
     }
-    const result = tool === "create_ticket" ? createTicket(args.order_id, args.issue, args.idempotency_key)
-                 : tool === "search_knowledge" ? search_knowledge(args.query)
-                 : get_order_status(args.order_id) || get_order_amount(args.order_id);
+    const result = dispatch(tool, args);
     step("execute", result.status === "ok" ? "ok" : "err",
       `调用 ${tool} → ${result.status}`, "", { args, result });
 
